@@ -1,12 +1,18 @@
-## clone repository
-cd /workspaces/class-variantcalling
+## clone repository, crea la cartella class-variantcalling
+###pwd /config/workspace
+
+mkdir -p class-variantcalling
+cd class-variantcalling
+
 mkdir -p analysis
 cd analysis
 
-## sym link so we do not change the repository itself
 mkdir -p raw_data
 cd raw_data
-ln -s /workspaces/class-variantcalling/datasets-class-variantcalling/reads/*.gz .
+
+tar -xvzf /workspace/class-variantcalling/datiesame/data_resequencing.tar.gz -C .
+
+##vado in analyisis e creo un altra cartella dentro analysis
 cd ..
 mkdir -p alignment
 cd alignment
@@ -88,14 +94,14 @@ gatk ApplyBQSR \
    -O disease_recal.bam
 
 
-tar -zvcf alignments.tar.gz *_recal.b*
 
 
 ### variant calling
+###dentro analysis creo variants
 
-cd /workspaces/class-variantcalling
-mkdir -p analysis/variants
-cd analysis/variants
+cd ..
+mkdir -p variants
+cd variants
 
 
 ## first single sample discovery
@@ -151,6 +157,7 @@ gatk --java-options "-Xmx4g" GenotypeGVCFs \
    --dbsnp /workspaces/class-variantcalling/datasets_reference_only/gatkbundle/dbsnp_146.hg38_chr21.vcf.gz \
    -O results.vcf.gz
 
+   
 #### ANNOTATE THE SAMPLE
 
 mkdir -p /workspaces/class-variantcalling/analysis/variants/cache
@@ -162,6 +169,7 @@ snpEff download -v hg38 -dataDir /workspaces/class-variantcalling/analysis/varia
 ### to execute snpeff we need to contain the memory
 snpEff -Xmx4g ann -dataDir /workspaces/class-variantcalling/analysis/variants/cache -v hg38 results.vcf.gz >results_ann.vcf
 
+#########all'esame snpEff -Xmx4g ann -dataDir /config/workspace/snpeff_data -v hg38 results.vcf.gz >results_ann.vcf
 
 ### filter variants
 
@@ -171,8 +179,14 @@ grep "#" results_ann.vcf >filtered_variants.vcf
 cat results_ann.vcf | grep HIGH | perl -nae 'if($F[10]=~/0\/0/ && $F[9]=~/1\/1/){print $_;}' >>filtered_variants.vcf
 cat results_ann.vcf | grep HIGH | perl -nae 'if($F[10]=~/0\/0/ && $F[9]=~/0\/1/){print $_;}' >>filtered_variants.vcf
 
-conda install bioconda::snpsift
+sudo conda install bioconda::snpsift
 
-SnpSift extractFields filtered_variants.vcf "CHROM" "POS" "ID" "GEN[*].GT" ANN[1].GENE ANN[*].EFFECT
+SnpSift extractFields \
+-s "," -e "." \
+filtered_variants.vcf \
+"CHROM" "POS" "ID" "GEN[disease].GT" "GEN[normal].GT" ANN[*].GENE ANN[*].EFFECT >>risultati.txt
 
-SnpSift extractFields filtered_variants.vcf "CHROM" "POS" "ID" "GEN[*].GT" ANN[0].GENE ANN[0].EFFECT
+SnpSift extractFields \
+-s "," -e "." \
+filtered_variants.vcf \
+"CHROM" "POS" "ID" "REF" "ALT" "GEN[*].GT" ANN[0].GENE ANN[0].EFFECT >>risultati.txt
